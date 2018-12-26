@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package service;
+
+service Kodama {
+    rpc Push(Job) returns (Error) {}
+}
+
+message Job {
+    string description = 1;
+}
+
+message Empty {}
+
+message Error {
+    ErrCode errCode     = 1;
+}
+
+enum ErrCode {
+    OK      = 0;
+    BUSY    = 1;
+    GENERIC = 100;
+}
+
