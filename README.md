@@ -1,1 +1,3 @@
 # Kodama
+
+Thin server for executing job in async. Under construction...
