@@ -3,7 +3,8 @@ syntax = "proto3";
 package service;
 
 service Kodama {
-    rpc Push(Job) returns (Error) {}
+    rpc push(Job) returns (Error) {}
+    rpc pop(Empty) returns (Job) {}
 }
 
 message Job {
