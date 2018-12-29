@@ -46,7 +46,7 @@ func (x ErrCode) String() string {
 	return proto.EnumName(ErrCode_name, int32(x))
 }
 func (ErrCode) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_kodama_955673a68b9e6acd, []int{0}
+	return fileDescriptor_kodama_072cfb4d2d0d703e, []int{0}
 }
 
 type Job struct {
@@ -60,7 +60,7 @@ func (m *Job) Reset()         { *m = Job{} }
 func (m *Job) String() string { return proto.CompactTextString(m) }
 func (*Job) ProtoMessage()    {}
 func (*Job) Descriptor() ([]byte, []int) {
-	return fileDescriptor_kodama_955673a68b9e6acd, []int{0}
+	return fileDescriptor_kodama_072cfb4d2d0d703e, []int{0}
 }
 func (m *Job) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Job.Unmarshal(m, b)
@@ -97,7 +97,7 @@ func (m *Empty) Reset()         { *m = Empty{} }
 func (m *Empty) String() string { return proto.CompactTextString(m) }
 func (*Empty) ProtoMessage()    {}
 func (*Empty) Descriptor() ([]byte, []int) {
-	return fileDescriptor_kodama_955673a68b9e6acd, []int{1}
+	return fileDescriptor_kodama_072cfb4d2d0d703e, []int{1}
 }
 func (m *Empty) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Empty.Unmarshal(m, b)
@@ -128,7 +128,7 @@ func (m *Error) Reset()         { *m = Error{} }
 func (m *Error) String() string { return proto.CompactTextString(m) }
 func (*Error) ProtoMessage()    {}
 func (*Error) Descriptor() ([]byte, []int) {
-	return fileDescriptor_kodama_955673a68b9e6acd, []int{2}
+	return fileDescriptor_kodama_072cfb4d2d0d703e, []int{2}
 }
 func (m *Error) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Error.Unmarshal(m, b)
@@ -170,85 +170,119 @@ var _ grpc.ClientConn
 // is compatible with the grpc package it is being compiled against.
 const _ = grpc.SupportPackageIsVersion4
 
-// KodamaClient is the client API for Kodama service.
+// JobQueueClient is the client API for JobQueue service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
-type KodamaClient interface {
+type JobQueueClient interface {
 	Push(ctx context.Context, in *Job, opts ...grpc.CallOption) (*Error, error)
+	Pop(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Job, error)
 }
 
-type kodamaClient struct {
+type jobQueueClient struct {
 	cc *grpc.ClientConn
 }
 
-func NewKodamaClient(cc *grpc.ClientConn) KodamaClient {
-	return &kodamaClient{cc}
+func NewJobQueueClient(cc *grpc.ClientConn) JobQueueClient {
+	return &jobQueueClient{cc}
 }
 
-func (c *kodamaClient) Push(ctx context.Context, in *Job, opts ...grpc.CallOption) (*Error, error) {
+func (c *jobQueueClient) Push(ctx context.Context, in *Job, opts ...grpc.CallOption) (*Error, error) {
 	out := new(Error)
-	err := c.cc.Invoke(ctx, "/service.Kodama/Push", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/service.JobQueue/push", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-// KodamaServer is the server API for Kodama service.
-type KodamaServer interface {
+func (c *jobQueueClient) Pop(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Job, error) {
+	out := new(Job)
+	err := c.cc.Invoke(ctx, "/service.JobQueue/pop", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// JobQueueServer is the server API for JobQueue service.
+type JobQueueServer interface {
 	Push(context.Context, *Job) (*Error, error)
+	Pop(context.Context, *Empty) (*Job, error)
 }
 
-func RegisterKodamaServer(s *grpc.Server, srv KodamaServer) {
-	s.RegisterService(&_Kodama_serviceDesc, srv)
+func RegisterJobQueueServer(s *grpc.Server, srv JobQueueServer) {
+	s.RegisterService(&_JobQueue_serviceDesc, srv)
 }
 
-func _Kodama_Push_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _JobQueue_Push_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(Job)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(KodamaServer).Push(ctx, in)
+		return srv.(JobQueueServer).Push(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/service.Kodama/Push",
+		FullMethod: "/service.JobQueue/Push",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(KodamaServer).Push(ctx, req.(*Job))
+		return srv.(JobQueueServer).Push(ctx, req.(*Job))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-var _Kodama_serviceDesc = grpc.ServiceDesc{
-	ServiceName: "service.Kodama",
-	HandlerType: (*KodamaServer)(nil),
+func _JobQueue_Pop_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(JobQueueServer).Pop(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/service.JobQueue/Pop",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(JobQueueServer).Pop(ctx, req.(*Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+var _JobQueue_serviceDesc = grpc.ServiceDesc{
+	ServiceName: "service.JobQueue",
+	HandlerType: (*JobQueueServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "Push",
-			Handler:    _Kodama_Push_Handler,
+			MethodName: "push",
+			Handler:    _JobQueue_Push_Handler,
+		},
+		{
+			MethodName: "pop",
+			Handler:    _JobQueue_Pop_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
 	Metadata: "kodama.proto",
 }
 
-func init() { proto.RegisterFile("kodama.proto", fileDescriptor_kodama_955673a68b9e6acd) }
+func init() { proto.RegisterFile("kodama.proto", fileDescriptor_kodama_072cfb4d2d0d703e) }
 
-var fileDescriptor_kodama_955673a68b9e6acd = []byte{
-	// 194 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x4c, 0x8f, 0x41, 0x4b, 0x80, 0x40,
-	0x10, 0x46, 0xb5, 0xd4, 0xad, 0x51, 0x64, 0x99, 0x53, 0x74, 0x92, 0x3d, 0x94, 0x78, 0x90, 0xd0,
-	0x7f, 0x90, 0x2c, 0x91, 0x42, 0x85, 0xd1, 0xa1, 0xa3, 0xba, 0x0b, 0x49, 0xd8, 0xc8, 0x68, 0x41,
-	0xff, 0x3e, 0x30, 0x0b, 0xaf, 0x8f, 0xc7, 0x9b, 0xf9, 0x20, 0x7a, 0x27, 0xd3, 0x4d, 0x5d, 0x3e,
-	0x33, 0xad, 0x84, 0x62, 0xb1, 0xfc, 0x35, 0x0e, 0x56, 0x5d, 0xc3, 0x69, 0x4d, 0x3d, 0x26, 0x10,
-	0x1a, 0xbb, 0x0c, 0x3c, 0xce, 0xeb, 0x48, 0x1f, 0x17, 0x6e, 0xe2, 0xa6, 0xe7, 0xed, 0x11, 0x29,
-	0x01, 0xbe, 0x9e, 0xe6, 0xf5, 0x5b, 0x95, 0xe0, 0x6b, 0x66, 0x62, 0xcc, 0x40, 0x58, 0xe6, 0x8a,
-	0x8c, 0xdd, 0xfc, 0xb8, 0x90, 0xf9, 0x5e, 0xcd, 0xf5, 0x2f, 0x6f, 0xff, 0x84, 0x2c, 0x05, 0xb1,
-	0x33, 0x0c, 0xe0, 0xe4, 0xb1, 0x91, 0x0e, 0x9e, 0x81, 0x77, 0xfb, 0xf2, 0xfc, 0x2a, 0x5d, 0x0c,
-	0x41, 0xdc, 0xe9, 0x07, 0xdd, 0xde, 0x57, 0xd2, 0x14, 0x37, 0x10, 0x34, 0xdb, 0xa7, 0x78, 0x05,
-	0xde, 0xd3, 0xe7, 0xf2, 0x86, 0xd1, 0x7f, 0xb6, 0xa6, 0xfe, 0x32, 0x3e, 0x1e, 0x21, 0x56, 0x4e,
-	0x1f, 0x6c, 0x93, 0xca, 0x9f, 0x00, 0x00, 0x00, 0xff, 0xff, 0x88, 0xaa, 0xc4, 0xf4, 0xe2, 0x00,
-	0x00, 0x00,
+var fileDescriptor_kodama_072cfb4d2d0d703e = []byte{
+	// 216 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x54, 0x8f, 0x4d, 0x4b, 0xc3, 0x40,
+	0x10, 0x86, 0x13, 0xfb, 0xb1, 0x75, 0x5a, 0xca, 0x32, 0x27, 0xe9, 0xa9, 0x2c, 0xa8, 0x25, 0x87,
+	0x1c, 0x92, 0x7f, 0x60, 0x58, 0xc4, 0x08, 0x8a, 0x11, 0x0f, 0x39, 0x66, 0xb3, 0x0b, 0x06, 0x89,
+	0xb3, 0x4c, 0x12, 0xc1, 0x7f, 0x2f, 0xc6, 0x28, 0xf1, 0xfa, 0xcc, 0x3b, 0xcf, 0xcc, 0x0b, 0xbb,
+	0x37, 0xb2, 0x55, 0x5b, 0xc5, 0x9e, 0xa9, 0x27, 0x14, 0x9d, 0xe3, 0x8f, 0xa6, 0x76, 0xea, 0x1a,
+	0x16, 0x39, 0x19, 0x3c, 0xc2, 0xd6, 0xba, 0xae, 0xe6, 0xc6, 0xf7, 0x0d, 0xbd, 0x5f, 0x84, 0xc7,
+	0xf0, 0x74, 0x5e, 0xcc, 0x91, 0x12, 0xb0, 0xd2, 0xad, 0xef, 0x3f, 0x55, 0x0a, 0x2b, 0xcd, 0x4c,
+	0x8c, 0x11, 0x08, 0xc7, 0x9c, 0x91, 0x75, 0x63, 0x7e, 0x9f, 0xc8, 0x78, 0xb2, 0xc6, 0xfa, 0x87,
+	0x17, 0xbf, 0x81, 0xe8, 0x04, 0x62, 0x62, 0xb8, 0x86, 0xb3, 0xc7, 0x7b, 0x19, 0xe0, 0x06, 0x96,
+	0x37, 0x2f, 0xcf, 0xa5, 0x0c, 0x71, 0x0b, 0xe2, 0x56, 0x3f, 0xe8, 0xe2, 0x2e, 0x93, 0x36, 0x29,
+	0x61, 0x93, 0x93, 0x79, 0x1a, 0xdc, 0xe0, 0xf0, 0x0a, 0x96, 0x7e, 0xe8, 0x5e, 0x71, 0xf7, 0x27,
+	0xce, 0xc9, 0x1c, 0xf6, 0xf3, 0x33, 0xc4, 0x2a, 0xc0, 0x4b, 0x58, 0x78, 0xf2, 0x38, 0x1b, 0x7c,
+	0x7f, 0x7a, 0xf8, 0xb7, 0xa6, 0x02, 0xb3, 0x1e, 0xbb, 0xa7, 0x5f, 0x01, 0x00, 0x00, 0xff, 0xff,
+	0x4a, 0xbf, 0xb2, 0x07, 0x0b, 0x01, 0x00, 0x00,
 }
