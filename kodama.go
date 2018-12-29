@@ -20,10 +20,7 @@ type Server struct {
 type Configuration struct {
 	Port      int
 	QueueLen  int
-	WorkerNum int
-	RetryNum  int
 	Validator Validator
-	Worker    Worker
 }
 
 func NewServer(cfg *Configuration) *Server {
@@ -40,9 +37,7 @@ func (k *Server) Run() error {
 	s := grpc.NewServer()
 	reflection.Register(s)
 	k.server = s
-	service.RegisterKodamaServer(s, k)
-
-	k.runDispatcher()
+	service.RegisterJobQueueServer(s, k)
 
 	return k.server.Serve(listen)
 }
@@ -68,25 +63,6 @@ func (k *Server) Push(ctx context.Context, job *service.Job) (*service.Error, er
 	return errOK, nil
 }
 
-func (k *Server) runDispatcher() {
-	workerCh := make(chan struct{}, k.WorkerNum)
-	for {
-		workerCh <- struct{}{}
-		go func() {
-			select {
-			case desc := <-k.jobQueue:
-			retry:
-				for i := 0; i < k.RetryNum; i++ {
-					if err := k.Worker.Work(desc); err == nil {
-						break retry
-					}
-				}
-				// TODO: retry count exceeded. notify to system admin
-
-			}
-			// TODO: notify result to caller
-
-			<-workerCh
-		}()
-	}
+func (k *Server) Pop(context.Context, *service.Empty) (*service.Job, error) {
+	return nil, nil
 }
