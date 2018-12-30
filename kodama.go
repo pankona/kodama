@@ -2,9 +2,11 @@ package kodama
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"strconv"
+	"time"
 
 	"github.com/pankona/kodama/service"
 	"google.golang.org/grpc"
@@ -42,10 +44,16 @@ func (k *Server) Run() error {
 	return k.server.Serve(listen)
 }
 
+// service.Errors
 var (
 	errOK      = &service.Error{ErrCode: service.ErrCode_OK}
 	errBusy    = &service.Error{ErrCode: service.ErrCode_BUSY}
 	errGeneric = &service.Error{ErrCode: service.ErrCode_GENERIC}
+)
+
+// ordinal errors
+var (
+	errNoJob = errors.New("job queue is empty")
 )
 
 func (k *Server) Push(ctx context.Context, job *service.Job) (*service.Error, error) {
@@ -64,5 +72,10 @@ func (k *Server) Push(ctx context.Context, job *service.Job) (*service.Error, er
 }
 
 func (k *Server) Pop(context.Context, *service.Empty) (*service.Job, error) {
-	return nil, nil
+	select {
+	case j := <-k.jobQueue:
+		return &service.Job{Description: j}, nil
+	case <-time.After(10 * time.Second):
+		return nil, errNoJob
+	}
 }
