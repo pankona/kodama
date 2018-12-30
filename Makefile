@@ -10,7 +10,7 @@ PB_GOS = $(PROTOS:%.proto=$(PB_GO_DIR)/%.pb.go)
 BUILD_CMD ?= go build
 
 all: genproto
-	@cd $(CURDIR)/cmd/kodamad; go build
+	@cd $(CURDIR)/cmd/jqd; go build
 
 genproto: $(PB_GOS)
 
