@@ -15,7 +15,7 @@ func main() {
 
 	s := kodama.NewServer(cfg)
 	if err := s.Run(); err != nil {
-		log.Printf("Kodama terminated: %v", err)
+		log.Printf("jqd (job queue daemon) terminated: %v", err)
 	}
 }
 
