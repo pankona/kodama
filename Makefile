@@ -9,8 +9,14 @@ PB_GOS = $(PROTOS:%.proto=$(PB_GO_DIR)/%.pb.go)
 
 BUILD_CMD ?= go build
 
-all: genproto
-	@cd $(CURDIR)/cmd/jqd; go build
+DIRECTORIES = $(dir $(wildcard $(CURDIR)/cmd/*/.))
+
+all: build
+
+build: $(DIRECTORIES)
+
+$(DIRECTORIES): genproto
+	cd $@; go build
 
 genproto: $(PB_GOS)
 
