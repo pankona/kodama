@@ -2,7 +2,7 @@
 
 Thin server for executing job in async. Under construction...
 
-## Design
+## What is this
 
 Design note (in Japanese) is available here: https://pankona.github.io/kodama/
 
