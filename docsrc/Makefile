@@ -13,4 +13,5 @@ src/node_modules:
 		gitbook install
 
 clean:
+	rm -rf $(CURDIR)/src/assets/images/uml/*
 	rm -rf $(OUTDIR)
