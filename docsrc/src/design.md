@@ -1,18 +1,75 @@
-# 非同期ジョブ実行システム設計
+# 非同期ジョブシステム設計
 
-## ユースケース
+## 要件
+
+- 複数の Web アプリケーションから共通で使える非同期ジョブの基盤を提供する
+  - 対象となるのは時間がかかる処理。例えば、動画のエンコーディングや大量のサムネイルの作成など。
+- 非同期ジョブが失敗した場合は、自動的に 5 回リトライする
+- 5 回失敗した非同期ジョブはシステム管理者にエラー通知する
+- 非同期ジョブが終了したら、成否に関わらず結果をユーザに通知したい。
+  - これは可能か？どのような制約をつければ実現できるか？
 
 ## モジュール構成図
 
 ![](/assets/module-diagram.svg)
 
-## シーケンス図
+### 各モジュールの主な役割
+
+- Web Application
+
+ウェブアプリケーション。本非同期ジョブシステムを用いる主体。<br>
+複数のインスタンスが立ち上がっている等して、複数同時に存在する可能性もあるとする。
+
+- Load Balancer
+
+非同期ジョブシステムの入り口になる後述の API Server はスケールアウトする等で複数になる可能性がある。<br>
+負荷を分散するためにロードバランサーを置く。
+
+- API Server
+
+本非同期ジョブシステムの入り口。RESTful あるいは gRPC 等の形で API を提供する。<br>
+大量にリクエストがくる場合に備えて、スケールアウトしやすいよう CRUD と切り離した形を想定しておく。<br>
+
+主な機能は以下。
+
+```
+- ジョブ登録
+- 実行待ちジョブ取り出し
+- ジョブ状態変更
+- ジョブ状態確認
+```
+
+- Job Queue / DB
+
+ジョブをいったん蓄えるためのサービスと DB。RESTful あるいは gRPC 等の形で API を提供する。<br>
+API Server から使われる。CRUD 部分。
+
+ジョブは以下の状態を持つ。
+
+```
+- 実行待ち
+  - ワーカーによって処理されるのを待っている状態のジョブ
+- 実行中
+  - ワーカーが実行中のジョブ
+  - 一定期間が過ぎると「実行待ち」に戻る
+- 正常終了
+- 失敗終了
+ - エラー理由を添えることができる
+```
+
+- Worker
+
+ジョブを実行する部分。<br>
+API Server に定期的に監視し (あるいは API Server からのプッシュ通知)、ジョブが投入されていれば取り出して実行する。<br>
+API Server の API を用いてジョブの実行結果を DB に反映する。
+
+## 主要機能のシーケンス図
 
 ```uml
 @startuml
 
 skinparam monochrome true
-skinparam defaultFontSize 20
+skinparam defaultFontSize 18
 skinparam defaultFontName courier
 
 hide footbox
@@ -25,43 +82,90 @@ participant "**Job Queue**"  as queue
 participant "**DB**"         as db
 end box
 
-== Register Job ==
+== ジョブの登録 ==
 
-app -> api : Register
-    api -> queue : Register
-        queue -> db : Insert\nnew Job
-        queue <-- db : Job ID
-    api <-- queue : Job ID
-app <-- api : Job ID
+app -> api : ジョブ登録
+    api -> queue :  ジョブ登録
+        queue -> queue : ジョブ ID 生成
+        queue -> db : ジョブ挿入\n(ジョブ ID)
+        queue <-- db : OK
+   api <-- queue : ジョブ ID
+app <-- api : ジョブ ID
 
-== Execute Job ==
+== ジョブの実行 ==
 
-api <- worker : Fetch
-    api -> queue : Fetch
-        queue -> db : Select\nPending Job
-        queue <-- db : Pending Job
-    api <-- queue : Pending Job
-api --> worker : Pending Job
+api <- worker : ジョブ取り出し
+    api -> queue : ジョブ取り出し
+        queue -> db : 実行待ち\nジョブ取り出し
+        note right of queue: ジョブの状態を「実行中」に変更する
+        queue <-- db : ジョブ詳細
+    api <-- queue : ジョブ詳細
+api --> worker : ジョブ詳細
 
-worker -> worker : Execute Job
-note right of worker : It may take long time...
+worker -> worker : ジョブ実行
+note right of worker : 時間かかるかも
 
-api <- worker : Update (success/failure)
-    api -> queue : update
-        note right of queue: if job executing was failure\nand retry count doesn't\nexceed as configured, change\njob status to "Pending"
-        queue -> db : Update\nJob status
-        queue <-- db
+api <- worker : ジョブ状態更新 (ジョブ ID、成功/失敗)
+    api -> queue : ジョブ状態更新
+        note right of queue: ジョブ実行が失敗、かつリトライ回数が\n規定 (5回) に満たない場合、ジョブの\n状態を「実行待ち」に変更、\nリトライ試行済回数を加算する
+        note right of queue: ジョブ実行が失敗、かつリトライ回数が\n規定 (5回) を超えた場合、ジョブの\n状態を「失敗」に変更し、システム管理者\nに通知
+        note right of queue: ジョブ実行が成功した場合、ジョブの\n状態を「成功」に変更する
+        queue -> db : ジョブ状態更新
+        queue <-- db : OK
     api <-- queue
 api --> worker
 
-== Confirm Job Status ==
+== ジョブの状態確認 ==
 
-app -> api : Status
-    api -> queue : Status
-        queue -> db : Select\nSpecified Job
-        queue <-- db : Job
-    api <-- queue : Job
-app <-- api : Job
+app -> api : ジョブ状態取得 (ジョブ ID)
+    api -> queue : ジョブ状態取得 (Job ID)
+        queue -> db : 指定のジョブを取得
+        queue <-- db : ジョブ詳細
+    api <-- queue : ジョブ詳細
+app <-- api : ジョブ詳細
 
 @enduml
 ```
+
+## 管理者へのエラー通知
+
+ジョブが、規定のリトライ回数 (5 回) を上回って失敗した場合、API Server は管理者にエラーを通知する。
+エラー通知の方法は、メール、Slack 等へのポストを行うことを想定。
+
+- 送信先が大量である等でそれなりに通知処理に時間が掛かることが想定される場合は、別途非同期ジョブシステムを用いて通知処理を行う必要がありそう。
+
+## ジョブ終了時の結果通知
+
+先述のシーケンス図では、ジョブの成否、ないし進捗の確認はユーザーがジョブの状態取得 API を逐次実行する (ポーリング) することによってなされることを想定している。
+
+一方、ジョブが完了し次第通知する形 (非同期ジョブシステム側からのプッシュ通知) を考える場合、例えば以下のような方式で実現できる。
+
+- WebSocket、gRPC の stream で push 通知
+
+  - コネクション張りっぱなし系の実現方法。処理が終わり次第、システム側から push で通知する。
+  - 結果を通知する前にコネクションが切れてしまう場合は、貼り直す必要がある。結果通知時には少なくともコネクションが張られている必要がある。
+  - コネクションが張られていないタイミングで結果の通知が行われてしまう場合に、結果が失われないようにケアする必要がある。
+
+- コールバック URL に結果を通知
+  - ジョブ投入時に結果通知先の URL を添えておく方式。ワーカー、もしくは API Server が指定された URL にジョブ実行結果をポストする。
+  - 通知先の URL が何らかの理由でリーチできない (指定に誤りがある、ダウンしている、ネットワーク不調、など) 場合に、結果が失われないようにケアする必要がある。
+
+## 諸々補足
+
+- Worker は、処理内容によっては大量にインスタンスが必要になる場合もありえそうなため、スケールアウトしやすい形にしておく。
+
+  - CRUD 部分はスケールアウトしにくい (しても性能があがらない可能性) 場合があると思われるので、CRUD と Worker を分けておくほうが都合が良い
+  - という理由で、Job Queue と Worker が分かれている構成を検討した
+
+- Job Queue は、投入されたジョブを DB に入れて永続化する機能として想定した
+
+  - オンメモリでもある程度可能かもしれないが、Job Queue プロセスが死ぬと実行待ちジョブが失われる可能性があったり、大量のジョブが投入されたときにメモリに保持しきれなくなる、等の理由でオススメできないと考えた
+
+- 「実行中」のジョブについて
+
+  - Worker がジョブ実行途中で死んでしまったり、通信不調等の理由で実行結果の通知ができない場合、ジョブが実行中のままになってしまう可能性がある
+  - そのため、「実行中」状態のジョブは一定期間が過ぎると「実行待ち」に自動的に戻るようにしておく。
+  - 「一定期間」は、ジョブ登録時にパラメータとして添えられる (Web Application が指定できる) ようにしておく。
+  - Worker は、一定期間が過ぎたジョブに対しては結果通知をせずに終了するのが望ましいが、実行済の処理をなかったことにできない場合も考えられるし、タイミングによっては結果の通知が行われてしまうこともありうる。
+
+    - 本制限のため、本システムでは「同一のジョブが二回以上実行される」場合がありうる。
