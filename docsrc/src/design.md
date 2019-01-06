@@ -4,4 +4,6 @@
 
 ## モジュール構成図
 
+![](/assets/module-diagram.svg)
+
 ## シーケンス図
